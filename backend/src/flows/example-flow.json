@@ -1,0 +1,74 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "start",
+      "next": "2"
+    },
+    {
+      "id": "2",
+      "type": "httpRequest",
+      "next": ["3", "8"],
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/todos/1",
+        "method": "GET"
+      }
+    },
+    {
+      "id": "3",
+      "type": "condition",
+      "parameters": {
+        "condition": {
+          "type": "group",
+          "logicalOperator": "and",
+          "conditions": [
+            {
+              "type": "comparison",
+              "lhs": "userId",
+              "op": "equals",
+              "rhs": 1
+            }
+          ]
+        },
+        "falseNext": "5"
+      },
+      "next": "4"
+    },
+    {
+      "id": "4",
+      "type": "loop",
+      "parameters": {
+        "loopItems": ["1", "2", "3"],
+        "itemVariable": "loopItem",
+        "loopNext": "6"
+      },
+      "next": "7"
+    },
+    {
+      "id": "5",
+      "type": "end"
+    },
+    {
+      "id": "6",
+      "type": "httpRequest",
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/posts/{{loopItem}}",
+        "method": "GET"
+      },
+      "next": "7"
+    },
+    {
+      "id": "7",
+      "type": "end"
+    },
+    {
+      "id": "8",
+      "type": "httpRequest",
+      "parameters": {
+        "url": "https://jsonplaceholder.typicode.com/users/1",
+        "method": "GET"
+      },
+      "next": "7"
+    }
+  ]
+}

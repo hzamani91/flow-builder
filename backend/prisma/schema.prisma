@@ -1,0 +1,122 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password      String
+  username      String      @unique
+  apiKey        String      @unique
+  workflows     Workflow[]
+  credentials   Credential[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Credential {
+  id            String      @id @default(uuid())
+  name          String
+  type          String
+  data          Json
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  nodes         Node[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Workflow {
+  id            String      @id @default(uuid())
+  name          String
+  description   String?
+  version       Int         @default(1)
+  nodes         Node[]
+  triggers      Trigger[]
+  active        Boolean     @default(true)
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+  executions    Execution[]
+  contextExecutions WorkflowExecutionContext[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Node {
+  id            String      @id @default(uuid())
+  name          String
+  type          String
+  parameters    Json
+  inputs        Node[]      @relation("InputOutput")
+  outputs       Node[]      @relation("InputOutput")
+  credential    Credential? @relation(fields: [credentialId], references: [id])
+  credentialId  String?
+  workflow      Workflow    @relation(fields: [workflowId], references: [id])
+  workflowId    String
+  executionNodes NodeExecution[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Trigger {
+  id            String      @id @default(uuid())
+  type          String
+  configuration Json
+  workflow      Workflow    @relation(fields: [workflowId], references: [id])
+  workflowId    String
+  executions    Execution[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model Execution {
+  id            String      @id @default(uuid())
+  status        ExecutionStatus
+  input         Json
+  output        Json?
+  error         String?
+  duration      Int?
+  startedAt     DateTime?
+  endedAt       DateTime?
+  trigger       Trigger     @relation(fields: [triggerId], references: [id])
+  triggerId     String
+  nodes         NodeExecution[]
+  workflow      Workflow    @relation(fields: [workflowId], references: [id])
+  workflowId    String
+  createdAt     DateTime    @default(now())
+}
+
+model NodeExecution {
+  id            String      @id @default(uuid())
+  executionId   String
+  execution     Execution   @relation(fields: [executionId], references: [id])
+  nodeId        String
+  node          Node        @relation(fields: [nodeId], references: [id])
+  input         Json
+  output        Json
+  error         String?
+  duration      Int?
+  startTime     DateTime
+  endTime       DateTime
+}
+
+enum ExecutionStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+model WorkflowExecutionContext {
+  id          String    @id @default(uuid())
+  workflowId  String
+  workflow    Workflow  @relation(fields: [workflowId], references: [id]) 
+  contextData Json
+  createdAt DateTime  @default(now())
+}
