@@ -1,25 +1,34 @@
-/*import axios from 'axios';
-import { Expression } from './condition';
+import axios from 'axios';
 import { ConditionEvaluator } from './condition-evaluator';
 
-export type FlowNode = {
+export type ReactFlowNode = {
   id: string;
   type: string;
-  next?: string; // id of the next node
-  parameters?: Record<string, any>;
+  data: {
+    parameters?: Record<string, any>;
+  };
 };
 
-export type Flow = {
-  nodes: FlowNode[];
+export type ReactFlowEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
+
+export type ReactFlow = {
+  nodes: ReactFlowNode[];
+  edges: ReactFlowEdge[];
 };
 
 export class FlowExecuter {
-  private flowMap: Map<string, FlowNode> = new Map();
+  private flowMap: Map<string, ReactFlowNode> = new Map();
+  private edges: ReactFlowEdge[] = [];
 
-  constructor(private flow: Flow) {
+  constructor(private flow: ReactFlow) {
     flow.nodes.forEach((node) => {
       this.flowMap.set(node.id, node);
     });
+    this.edges = flow.edges;
   }
 
   private async executeNode(nodeId: string, inputData: any): Promise<any> {
@@ -30,13 +39,13 @@ export class FlowExecuter {
 
     switch (node.type) {
       case 'start':
-        return this.executeNextNodes(node.next, inputData);
+        return this.executeNextNodes(nodeId, inputData);
       case 'httpRequest':
-        return this.executeHttpRequest(node, inputData);
+        return this.executeHttpRequest(node, nodeId, inputData);
       case 'condition':
-        return this.executeCondition(node, inputData);
+        return this.executeCondition(node, nodeId, inputData);
       case 'loop':
-        return this.executeLoop(node, inputData);
+        return this.executeLoop(node, nodeId, inputData);
       case 'end':
         return inputData;
       default:
@@ -45,12 +54,12 @@ export class FlowExecuter {
   }
 
   private async executeHttpRequest(
-    node: FlowNode,
+    node: ReactFlowNode,
+    nodeId: string,
     inputData: any,
   ): Promise<any> {
-    const { url, method, headers, body } = node.parameters || {};
+    const { url, method, headers, body } = node.data.parameters || {};
 
-    // Replace placeholders with inputData if needed
     const resolvedUrl = this.resolvePlaceholders(url, inputData);
     const resolvedHeaders = this.resolvePlaceholdersInObject(
       headers,
@@ -65,28 +74,36 @@ export class FlowExecuter {
         headers: resolvedHeaders,
         data: resolvedBody,
       });
-      return this.executeNextNodes(node.next, response.data);
+      return this.executeNextNodes(nodeId, response.data);
     } catch (error) {
       throw new Error(`HTTP request failed: ${error}`);
     }
   }
 
-  private async executeCondition(node: FlowNode, inputData: any): Promise<any> {
-    const { condition } = node.parameters || {};
+  private async executeCondition(
+    node: ReactFlowNode,
+    nodeId: string,
+    inputData: any,
+  ): Promise<any> {
+    const { condition, falseNext } = node.data.parameters || {};
     const evaluator = new ConditionEvaluator();
     const result = evaluator.evaluate(condition, inputData);
 
     if (result) {
-      return this.executeNextNodes(node.next, inputData);
-    } else if (node.parameters?.falseNext) {
-      return this.executeNextNodes(node.parameters.falseNext, inputData);
+      return this.executeNextNodes(nodeId, inputData);
+    } else if (falseNext) {
+      return this.executeNode(falseNext, inputData);
     }
 
     return inputData;
   }
 
-  private async executeLoop(node: FlowNode, inputData: any): Promise<any> {
-    const { loopItems, itemVariable, loopNext } = node.parameters || {};
+  private async executeLoop(
+    node: ReactFlowNode,
+    nodeId: string,
+    inputData: any,
+  ): Promise<any> {
+    const { loopItems, itemVariable, loopNext } = node.data.parameters || {};
     if (!Array.isArray(loopItems)) {
       throw new Error('loopItems must be an array');
     }
@@ -94,27 +111,28 @@ export class FlowExecuter {
     let lastOutput = inputData;
     for (const item of loopItems) {
       const loopInput = { ...lastOutput, [itemVariable]: item };
-      lastOutput = await this.executeNextNodes(node.next, loopInput);
+      lastOutput = await this.executeNextNodes(nodeId, loopInput);
     }
 
     if (loopNext) {
-      return this.executeNextNodes(loopNext, lastOutput);
+      return this.executeNode(loopNext, lastOutput);
     }
 
     return lastOutput;
   }
 
   private async executeNextNodes(
-    nextIds: string | string[] | undefined,
+    currentNodeId: string,
     inputData: any,
   ): Promise<any> {
-    if (!nextIds) {
+    const nextIds = this.edges
+      .filter((edge) => edge.source === currentNodeId)
+      .map((edge) => edge.target);
+
+    if (nextIds.length === 0) {
       return inputData;
     }
-    if (typeof nextIds === 'string') {
-      return this.executeNode(nextIds, inputData);
-    }
-    // if array, execute all nodes sequentially and combine results
+
     let lastOutput = inputData;
     for (const nextId of nextIds) {
       lastOutput = await this.executeNode(nextId, lastOutput);
@@ -169,13 +187,11 @@ export class FlowExecuter {
     return obj;
   }
 
-  public async run(): Promise<any> {
-    // Find start node
+  public async run(inputData:Record<string,any>): Promise<any> {
     const startNode = this.flow.nodes.find((n) => n.type === 'start');
     if (!startNode) {
       throw new Error('Start node not found');
     }
-    return this.executeNode(startNode.id, {});
+    return this.executeNode(startNode.id, inputData);
   }
 }
-  */

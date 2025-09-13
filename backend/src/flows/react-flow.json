@@ -4,7 +4,10 @@
       "id": "1",
       "type": "start",
       "data": {
-        "label": "Start"
+        "label": "Start",
+        "parameters": {
+          "todoId": "{{todoId}}"
+        }
       },
       "position": { "x": 100, "y": 50 }
     },
@@ -14,7 +17,7 @@
       "data": {
         "label": "HTTP Request",
         "parameters": {
-          "url": "https://jsonplaceholder.typicode.com/todos/1",
+          "url": "https://jsonplaceholder.typicode.com/todos/{{todoId}}",
           "method": "GET"
         }
       },
@@ -90,7 +93,7 @@
       "data": {
         "label": "Second HTTP",
         "parameters": {
-          "url": "https://jsonplaceholder.typicode.com/users/1",
+          "url": "https://jsonplaceholder.typicode.com/users/{{userId}}",
           "method": "GET"
         }
       },
